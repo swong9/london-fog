@@ -13,6 +13,9 @@ NUM_ROUNDS = 3
 from collections import defaultdict
 from colorama import Fore, Back, Style
 
+def style(style_str):
+	print(style_str, end="")
+
 def log(level, msg):
 	assert level in "i d e".split()
 	if level == "i":
@@ -32,7 +35,12 @@ class Player:
 	def __repr__(self):
 		return 'Player({0}, {1})'.format(self.name, self.number)
 
+def log_title(msg):
+	title_width = len(msg) + 4
+	log("d", "{0}\n# {1} #\n{0}".format("#" * title_width, msg))
+
 def get_players():
+	log_title("Setup")
 	i = 1
 	player_names = []
 	while True:
@@ -43,9 +51,22 @@ def get_players():
 				log("e", "Need at least 2 players to play a game!")
 				continue
 			player_names = allow_edits(player_names, name="player")
-			return [Player(name, i) for i, name in enumerate(player_names, start=1)]
+			return player_names
 		player_names.append(name)
 		i += 1
+
+def do_round(round_num, player_names):
+	log_title("Round {0}".format(round_num))
+	scores = []
+	for player in players:
+		score = get_input_type("Score for {0}:".format(player.name), "int")
+		scores.append(score)
+	scores = allow_edits(scores, name_list=player_names)
+	return scores
+
+def main():
+	players = get_players()
+	print(do_round(1, players))
 
 def go(players):
 	players = get_players()
@@ -88,32 +109,47 @@ def go(players):
 
 	return play_round()
 
-def allow_edits(items, name="item"):
+def allow_edits(items, name="item", name_list=None, deletable=False, nums_only=False):
 	edit_name = "edit"
+	delete_name = "del"
 	possible_cmds = ["yes"] + \
 		["{}{}".format(edit_name, i) for i,_ in enumerate(items, start=1)]
+	if deletable:
+		possible_cmds +=  + \
+		["{}{}".format(delete_name, i) for i,_ in enumerate(items, start=1)]
 	while True:
 		log("i", "are these {0}s correct?".format(name))
 		for i, item in enumerate(items, start=1):
-			print("  ({0} {1})  {2}".format(name, i, item))
-		cmd = assert_input("type `yes` if correct, or `{0}1` to edit item 1, etc."\
-			.format(edit_name), possible_cmds)
+			if name_list:
+				print("  ({0})  {2}".format(name_list[i-1], item))
+			else:
+				print("  ({0} {1})  {2}".format(name, i, item))
+		prompt = "type `yes` if correct,\n  or `{0}1` to edit item 1, etc."
+		if deletable:
+			prompt += "\n  or `{1}1` to delete item 1, etc."
+		cmd = assert_input(prompt.format(edit_name, delete_name), possible_cmds)
 		if cmd == 'yes':
 			return items
-		edit_num = int(cmd[len(edit_name):])
-		value = get_input("enter a new value for {0} {1}".format(name, edit_num))
-		items[edit_num - 1] = value
+		elif cmd.startswith(delete_name):
+			delete_num = int(cmd[len(delete_name):]) - 1
+			items = items[:delete_num] + items[delete_num + 1:]
+			possible_cmds = ["yes"] + \
+		["{}{}".format(edit_name, i) for i,_ in enumerate(items, start=1)] + \
+		["{}{}".format(delete_name, i) for i,_ in enumerate(items, start=1)]
+		elif cmd.startswith(edit_name):
+			edit_num = int(cmd[len(edit_name):])
+			input_type = "int" if nums_only else "str"
+			value = get_input_type("enter a new value for {0} {1}"\
+				.format(name, edit_num), value_type=input_type)
+			items[edit_num - 1] = value
 
 def assert_input(prompt, possible_values):
 	input_prompt = "{0}\npossible values: {1}".format(prompt, possible_values)
 	value = get_input(input_prompt)
 	while value not in possible_values:
-		log("e", "{0}^ invalid input\n".format(" " * len(DEFAULT_PROMPT)))
+		log("e", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
 		value = get_input(input_prompt)
 	return value
-
-def style(style_str):
-	print(style_str, end="")
 
 def get_input(prompt, input_prompt=DEFAULT_PROMPT, print_after=False):
 	log("i", prompt)
@@ -140,7 +176,8 @@ def get_input_type(prompt, value_type="str"):
 		try:
 			return int(value)
 		except:
-			value = get_input("{0} (must be int): ".format(prompt))
+			log("e", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
+			value = get_input(prompt)
 
 # if __name__ == '__main__':
 # 	go()
