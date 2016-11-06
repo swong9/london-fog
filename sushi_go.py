@@ -8,8 +8,21 @@ By Tammy Chen and Samantha Wong and Eric Pai.
 """
 
 DEFAULT_PROMPT = "--> "
+NUM_ROUNDS = 3
 
 from collections import defaultdict
+from colorama import Fore, Back, Style
+
+def log(level, msg):
+	assert level in "i d e".split()
+	if level == "i":
+		style(Style.DIM)
+	elif level == "d":
+		style(Fore.BLUE)
+	elif level == "e":
+		style(Fore.RED)
+	print(msg)
+	style(Style.RESET_ALL)
 
 class Player:
 	def __init__(self, name, number):
@@ -24,10 +37,10 @@ def get_players():
 	player_names = []
 	while True:
 		name = get_input("Enter a name for player {0}, or type `done` to end"
-			.format(i), print_after=False)
+			.format(i))
 		if name == 'done':
 			if len(player_names) < 2:
-				print("Need at least 2 players to play a game!")
+				log("e", "Need at least 2 players to play a game!")
 				continue
 			player_names = allow_edits(player_names, name="player")
 			return [Player(name, i) for i, name in enumerate(player_names, start=1)]
@@ -35,16 +48,11 @@ def get_players():
 		i += 1
 
 def go(players):
-
-	scores = {}
-	while players > 0:
-		name = get_input_type("Input the player's name:")
-		scores[name] = 0
-		players -= 1
+	players = get_players()
 	round = 1
 	def play_round():
 		nonlocal round
-		nonlocal scores
+		# nonlocal scores
 		print("Beginning of round", round)
 		for name in scores.keys():
 			score = get_input_type("Give a score for {0}:"\
@@ -85,7 +93,7 @@ def allow_edits(items, name="item"):
 	possible_cmds = ["yes"] + \
 		["{}{}".format(edit_name, i) for i,_ in enumerate(items, start=1)]
 	while True:
-		print("are these {0}s correct?".format(name))
+		log("i", "are these {0}s correct?".format(name))
 		for i, item in enumerate(items, start=1):
 			print("  ({0} {1})  {2}".format(name, i, item))
 		cmd = assert_input("type `yes` if correct, or `{0}1` to edit item 1, etc."\
@@ -100,12 +108,15 @@ def assert_input(prompt, possible_values):
 	input_prompt = "{0}\npossible values: {1}".format(prompt, possible_values)
 	value = get_input(input_prompt)
 	while value not in possible_values:
-		print("{0}^ invalid input\n".format(" " * len(DEFAULT_PROMPT)))
-		value = get_input(input_prompt, print_after=False)
+		log("e", "{0}^ invalid input\n".format(" " * len(DEFAULT_PROMPT)))
+		value = get_input(input_prompt)
 	return value
 
-def get_input(prompt, input_prompt=DEFAULT_PROMPT, print_after=True):
-	print(prompt)
+def style(style_str):
+	print(style_str, end="")
+
+def get_input(prompt, input_prompt=DEFAULT_PROMPT, print_after=False):
+	log("i", prompt)
 	value = input(input_prompt)
 	if print_after:
 		print()
