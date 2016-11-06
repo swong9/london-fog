@@ -1,16 +1,41 @@
+"""
+Keeps scores for a game of Sushi Go. Run a game by calling the function
+and passing in the number of players, followed by each of the players'
+names. Type in your scores carefully, as you won't be able to revise them
+afterwards. (now you can! -Eric)
+
+By Tammy Chen and Samantha Wong and Eric Pai.
+"""
+
 DEFAULT_PROMPT = "--> "
 
+from collections import defaultdict
+
+class Player:
+	def __init__(self, name, number):
+		self.scores = []
+		self.name = name
+		self.number = number
+	def __repr__(self):
+		return 'Player({0}, {1})'.format(self.name, self.number)
+
 def get_players():
-	pass
+	i = 1
+	player_names = []
+	while True:
+		name = get_input("Enter a name for player {0}, or type `done` to end"
+			.format(i), print_after=False)
+		if name == 'done':
+			if len(player_names) < 2:
+				print("Need at least 2 players to play a game!")
+				continue
+			player_names = allow_edits(player_names, name="player")
+			return [Player(name, i) for i, name in enumerate(player_names, start=1)]
+		player_names.append(name)
+		i += 1
 
 def go(players):
-	""" Keeps scores for a game of Sushi Go. Run a game by calling the function
-	and passing in the number of players, followed by each of the players'
-	names. Type in your scores carefully, as you won't be able to revise them
-	afterwards.
 
-	By Tammy Chen and Samantha Wong.
-	"""
 	scores = {}
 	while players > 0:
 		name = get_input_type("Input the player's name:")
@@ -77,7 +102,6 @@ def assert_input(prompt, possible_values):
 	while value not in possible_values:
 		print("{0}^ invalid input\n".format(" " * len(DEFAULT_PROMPT)))
 		value = get_input(input_prompt, print_after=False)
-	print()
 	return value
 
 def get_input(prompt, input_prompt=DEFAULT_PROMPT, print_after=True):
