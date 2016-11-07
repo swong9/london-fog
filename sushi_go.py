@@ -16,28 +16,21 @@ from colorama import Fore, Back, Style
 def style(style_str):
 	print(style_str, end="")
 
-def log(level, msg):
-	assert level in "i d e".split()
-	if level == "i":
+def log(color, msg):
+	if color == "d":
 		style(Style.DIM)
-	elif level == "d":
+	elif color == "b":
 		style(Fore.BLUE)
-	elif level == "e":
+	elif color == "r":
 		style(Fore.RED)
+	elif color == 'g':
+		style(Fore.GREEN)
 	print(msg)
 	style(Style.RESET_ALL)
 
-class Player:
-	def __init__(self, name, number):
-		self.scores = []
-		self.name = name
-		self.number = number
-	def __repr__(self):
-		return 'Player({0}, {1})'.format(self.name, self.number)
-
 def log_title(msg):
 	title_width = len(msg) + 4
-	log("d", "{0}\n# {1} #\n{0}".format("#" * title_width, msg))
+	log("b", "{0}\n# {1} #\n{0}".format("#" * title_width, msg))
 
 def get_players():
 	log_title("Setup")
@@ -48,38 +41,81 @@ def get_players():
 			.format(i))
 		if name == 'done':
 			if len(player_names) < 2:
-				log("e", "Need at least 2 players to play a game!")
+				log("r", "Need at least 2 players to play a game!")
 				continue
 			player_names = allow_edits(player_names, name="player")
 			return player_names
 		player_names.append(name)
 		i += 1
 
-def do_round(round_num, player_names):
+def log_scoreboard(scores, players):
+	lines = ["{0}'s score: {1}".format(name,score) for name,score in zip(players, scores)]
+	line_width = len(max(lines, key=lambda line: len(line))) + 4
+	max_score, min_score = max(scores), min(scores)
+	log('_', '*' * line_width)
+	for i, line in enumerate(lines):
+		color = '_'
+		if scores[i] == min_score:
+			color = 'r'
+		if scores[i] == max_score:
+			color = 'g'
+		log(color, '  {0}'.format(line))
+	log('_', '*' * line_width)
+
+def do_round(round_num, players):
 	log_title("Round {0}".format(round_num))
 	scores = []
 	for player in players:
-		score = get_input_type("Score for {0}:".format(player.name), "int")
+		score = get_input_type("Score for {0}:".format(player), "int")
 		scores.append(score)
-	scores = allow_edits(scores, name_list=player_names)
+	scores = allow_edits(scores, name_list=players, nums_only=True)
 	return scores
+
+def do_pudding(players):
+	log_title("Pudding Counts")
+	pudding_counts = []
+	for player in players:
+		count = get_input_type("Pudding count for {0}:".format(player), "int")
+		pudding_counts.append(count)
+	pudding_counts = allow_edits(pudding_counts, name_list=players, nums_only=True)
+	if len(set(pudding_counts)) <= 1:
+		return [0] * len(players)
+	score_diffs = []
+	min_, max_ = min(pudding_counts), max(pudding_counts)
+	penalty = -6 / pudding_counts.count(min_)
+	reward = 6 / pudding_counts.count(max_)
+	for count in pudding_counts:
+		if count == min_:
+			score_diffs.append(penalty)
+		elif count == max_:
+			score_diffs.append(reward)
+		else:
+			score_diffs.append(0)
+	return score_diffs
+
+def do_finish(scores, players):
+	log_title("Final Scores")
+	log_scoreboard(scores, players)
+	print() # empty line
+
+
+
+def add_scores(scores1, scores2):
+	return [i + j for i, j in zip(scores1, scores2)]
 
 def main():
 	players = get_players()
-	print(do_round(1, players))
+	scores = [0] * len(players)
+	for round_num in range(1, NUM_ROUNDS + 1):
+		scores = add_scores(scores, do_round(round_num, players))
+		log_scoreboard(scores, players)
+	scores = add_scores(scores, do_pudding(players))
+
 
 def go(players):
 	players = get_players()
 	round = 1
 	def play_round():
-		nonlocal round
-		# nonlocal scores
-		print("Beginning of round", round)
-		for name in scores.keys():
-			score = get_input_type("Give a score for {0}:"\
-				.format(name), "int")
-			scores[name] = scores[name] + int(score)
-		print("End of round", str(round))
 		round += 1
 		if round > 3:
 			for name in scores.keys():
@@ -106,7 +142,6 @@ def go(players):
 			return "Game finished!"
 		else:
 			return play_round()
-
 	return play_round()
 
 def allow_edits(items, name="item", name_list=None, deletable=False, nums_only=False):
@@ -118,10 +153,10 @@ def allow_edits(items, name="item", name_list=None, deletable=False, nums_only=F
 		possible_cmds +=  + \
 		["{}{}".format(delete_name, i) for i,_ in enumerate(items, start=1)]
 	while True:
-		log("i", "are these {0}s correct?".format(name))
+		log("d", "are these {0}s correct?".format(name))
 		for i, item in enumerate(items, start=1):
 			if name_list:
-				print("  ({0})  {2}".format(name_list[i-1], item))
+				print("  ({0})  {1}".format(name_list[i-1], item))
 			else:
 				print("  ({0} {1})  {2}".format(name, i, item))
 		prompt = "type `yes` if correct,\n  or `{0}1` to edit item 1, etc."
@@ -147,12 +182,12 @@ def assert_input(prompt, possible_values):
 	input_prompt = "{0}\npossible values: {1}".format(prompt, possible_values)
 	value = get_input(input_prompt)
 	while value not in possible_values:
-		log("e", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
+		log("r", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
 		value = get_input(input_prompt)
 	return value
 
 def get_input(prompt, input_prompt=DEFAULT_PROMPT, print_after=False):
-	log("i", prompt)
+	log("d", prompt)
 	value = input(input_prompt)
 	if print_after:
 		print()
@@ -176,8 +211,5 @@ def get_input_type(prompt, value_type="str"):
 		try:
 			return int(value)
 		except:
-			log("e", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
+			log("r", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
 			value = get_input(prompt)
-
-# if __name__ == '__main__':
-# 	go()
