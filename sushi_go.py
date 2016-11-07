@@ -32,6 +32,20 @@ def log_title(msg):
 	title_width = len(msg) + 4
 	log("b", "{0}\n# {1} #\n{0}".format("#" * title_width, msg))
 
+def log_scoreboard(scores, players):
+	lines = ["{0}'s score: {1}".format(name,score) for name,score in zip(players, scores)]
+	line_width = len(max(lines, key=lambda line: len(line))) + 4
+	max_score, min_score = max(scores), min(scores)
+	log('_', '*' * line_width)
+	for i, line in enumerate(lines):
+		color = '_'
+		if scores[i] == min_score:
+			color = 'r'
+		if scores[i] == max_score:
+			color = 'g'
+		log(color, '  {0}'.format(line))
+	log('_', '*' * line_width)
+
 def get_players():
 	log_title("Setup")
 	i = 1
@@ -47,20 +61,6 @@ def get_players():
 			return player_names
 		player_names.append(name)
 		i += 1
-
-def log_scoreboard(scores, players):
-	lines = ["{0}'s score: {1}".format(name,score) for name,score in zip(players, scores)]
-	line_width = len(max(lines, key=lambda line: len(line))) + 4
-	max_score, min_score = max(scores), min(scores)
-	log('_', '*' * line_width)
-	for i, line in enumerate(lines):
-		color = '_'
-		if scores[i] == min_score:
-			color = 'r'
-		if scores[i] == max_score:
-			color = 'g'
-		log(color, '  {0}'.format(line))
-	log('_', '*' * line_width)
 
 def do_round(round_num, players):
 	log_title("Round {0}".format(round_num))
@@ -97,8 +97,17 @@ def do_finish(scores, players):
 	log_title("Final Scores")
 	log_scoreboard(scores, players)
 	print() # empty line
-
-
+	max_ = max(scores)
+	winners = [name for score, name in zip(scores, players) if score == max_]
+	style(Fore.MAGENTA)
+	if len(winners) == 1:
+		print("The winner is {0} with a score of {1}!".format(winners[0], max_))
+	else:
+		print("There is a tie score of {0} between these players:".format(max_))
+		for winner in winners:
+			print("  {0}".format(winner))
+	style(Style.RESET_ALL)
+	log_title("Game Finished")
 
 def add_scores(scores1, scores2):
 	return [i + j for i, j in zip(scores1, scores2)]
@@ -110,39 +119,7 @@ def main():
 		scores = add_scores(scores, do_round(round_num, players))
 		log_scoreboard(scores, players)
 	scores = add_scores(scores, do_pudding(players))
-
-
-def go(players):
-	players = get_players()
-	round = 1
-	def play_round():
-		round += 1
-		if round > 3:
-			for name in scores.keys():
-				dessert_score = get_input_type("Input dessert score for {0}:"\
-					.format(name), "int")
-				scores[name] = scores[name] + int(dessert_score)
-			highest_score = 0
-			winner = ''
-			tie = False
-			for name in scores.keys():
-				if scores[name] > highest_score:
-					highest_score = scores[name]
-					winner = name
-			for name in scores.keys():
-				if scores[name] == highest_score and name != winner:
-					print("There is a tie score of {0} between {1} and {2}!"\
-						.format(highest_score, winner, name))
-					tie = True
-			if not tie:
-				print("The winner is {0} with a score of {1}!"\
-					.format(winner, highest_score))
-			for name in scores.keys():
-				print("{0}:{1}".format(name, scores[name]))
-			return "Game finished!"
-		else:
-			return play_round()
-	return play_round()
+	do_finish(scores, players)
 
 def allow_edits(items, name="item", name_list=None, deletable=False, nums_only=False):
 	edit_name = "edit"
@@ -213,3 +190,7 @@ def get_input_type(prompt, value_type="str"):
 		except:
 			log("r", "{0}^ invalid input".format(" " * len(DEFAULT_PROMPT)))
 			value = get_input(prompt)
+
+if __name__ == '__main__':
+	main() # where all the magic happens xP
+
